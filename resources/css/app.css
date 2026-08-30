@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "../../vendor/livewire/flux/dist/flux.css";
 
+@import "../../vendor/power-components/livewire-powergrid/resources/css/tailwind4.css";
+
+@import "flatpickr/dist/flatpickr.min.css";
+
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';
@@ -8,11 +12,10 @@
 
 /* Dependencias de librerías */
 
-/* Estilos internos de Powergrid para Tailwind v4 */
-@import "../../vendor/power-components/livewire-powergrid/resources/css/tailwind4.css";
+@source "../../vendor/power-components/livewire-powergrid/resources/views/**/*.php";
+@source "../../vendor/power-components/livewire-powergrid/src/Themes/Tailwind2.php";
 
-/* Escaneo de clases para Toaster y tus tablas personalizadas de Livewire */
-@source "../../vendor/masmerise/livewire-toaster/resources/views/*.blade.php"
+@source "../../vendor/masmerise/livewire-toaster/resources/views/*.blade.php";
 @source "../../app/Livewire/**/*Table.php";
 
 @custom-variant dark (&:where(.dark, .dark *));
