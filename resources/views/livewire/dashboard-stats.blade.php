@@ -52,44 +52,48 @@
             <flux:heading size="lg">Comparativo de Ingresos vs Ventas</flux:heading>
         </div>
 
-        <!-- Motor de Alpine.js interceptando actualizaciones -->
-        <div class="w-full h-80" x-data="{
-                chartInstance: null,
-                initChart() {
-                    let ctx = this.$refs.canvas;
-                    this.chartInstance = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: {{ json_encode($chartData['labels']) }},
-                            datasets: [
-                                {
-                                    label: 'Total de Ventas',
-                                    data: {{ json_encode($chartData['sales']) }},
-                                    backgroundColor: '#3b82f6',
-                                    borderRadius: 4
-                                },
-                                {
-                                    label: 'Abonos Recibidos',
-                                    data: {{ json_encode($chartData['payments']) }},
-                                    backgroundColor: '#22c55e',
-                                    borderRadius: 4
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { position: 'bottom' } },
-                            scales: { y: { beginAtZero: true } }
-                        }
-                    });
+        <!-- Escudo wire:ignore y limpieza de RAM con destroy() -->
+        <div wire:ignore class="w-full h-80" x-data="{
+            chartInstance: null,
+            init() {
+                // Cargamos la gráfica inicial
+                this.drawChart({{ json_encode($chartData) }});
+            },
+            drawChart(dataObj) {
+                // 1. LA MAGIA ANTI-LAG: Si ya hay una gráfica, mátala para liberar RAM
+                if (this.chartInstance) {
+                    this.chartInstance.destroy();
                 }
-             }" x-init="initChart()" @update-chart.window="
-                chartInstance.data.labels = $event.detail.labels;
-                chartInstance.data.datasets[0].data = $event.detail.sales;
-                chartInstance.data.datasets[1].data = $event.detail.payments;
-                chartInstance.update();
-             ">
+        
+                // 2. Dibuja la nueva gráfica limpia
+                let ctx = this.$refs.canvas.getContext('2d');
+                this.chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataObj.labels,
+                        datasets: [{
+                                label: 'Total de Ventas',
+                                data: dataObj.sales,
+                                backgroundColor: '#3b82f6',
+                                borderRadius: 4
+                            },
+                            {
+                                label: 'Abonos Recibidos',
+                                data: dataObj.payments,
+                                backgroundColor: '#22c55e',
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+        }" @update-chart.window="drawChart($event.detail)">
             <canvas x-ref="canvas"></canvas>
         </div>
     </flux:card>

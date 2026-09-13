@@ -2,10 +2,10 @@
 
 namespace App\Livewire;
 
-use Illuminate\Database\Query\Builder;
+use App\Models\Payment;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\On; // <-- ¡No olvides esta importación!
+use Livewire\Attributes\On;
 use PowerComponents\LivewirePowerGrid\Button;
 use PowerComponents\LivewirePowerGrid\Column;
 use PowerComponents\LivewirePowerGrid\Facades\PowerGrid;
@@ -16,13 +16,23 @@ final class PaymentTable extends PowerGridComponent
 {
     public string $tableName = 'paymentTable';
 
-    public string $dateRange = '';
+    public ?string $startDate = null;
+    public ?string $endDate = null;
 
-    // Este Atributo escucha el evento que disparamos desde Alpine en el Dashboard
-    #[On('updateDateRange')]
-    public function setDateRange($data)
+    #[On('applyDateFilter')]
+    public function filterDates($start, $end): void
     {
-        $this->dateRange = $data['range'];
+        $this->startDate = $start;
+        $this->endDate = $end;
+        $this->resetPage();
+    }
+
+    #[On('clearDateFilter')]
+    public function resetDateFilter(): void
+    {
+        $this->startDate = null;
+        $this->endDate = null;
+        $this->resetPage();
     }
 
     public function setUp(): array
@@ -31,34 +41,29 @@ final class PaymentTable extends PowerGridComponent
 
         return [
             PowerGrid::header()
-                ->showSearchInput(), // Ya quitamos la vista problemática
+                ->showSearchInput(),
 
             PowerGrid::footer()
                 ->showPerPage(10, [10, 25, 50, 100])
-                ->showRecordCount(),
+                ->showRecordCount()
+            // ->Pagination('vendor.livewire.tailwind'),
+            // Al quitar la línea del 'simple-tailwind', forzamos a que use tu archivo publicado
         ];
     }
 
     public function datasource(): Builder
     {
-        $query = DB::table('payments');
+        $query = Payment::query();
 
-        // Filtramos la base de datos mágicamente cuando cambie el rango
-        if (!empty($this->dateRange)) {
-            $dates = explode(' to ', $this->dateRange);
+        if (!empty($this->startDate) && !empty($this->endDate)) {
+            $start = Carbon::parse($this->startDate)->startOfDay();
+            $end = Carbon::parse($this->endDate)->endOfDay();
 
-            if (count($dates) === 2) {
-                $start = Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay();
-                $end = Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay();
-
-                $query->whereBetween('created_at', [$start, $end]);
-            }
+            $query->whereBetween('created_at', [$start, $end]);
         }
 
         return $query;
     }
-
-    // ... Todo lo demás (fields, columns, actions) se queda exactamente igual que como lo tenías.
 
     public function fields(): PowerGridFields
     {
@@ -77,7 +82,6 @@ final class PaymentTable extends PowerGridComponent
             Column::make('Folio Venta', 'sale_id')->searchable()->sortable(),
             Column::make('Monto Abonado', 'amount', 'amount')->sortable()->searchable(),
             Column::make('Fecha de Registro', 'created_at_formatted', 'created_at')->sortable(),
-            Column::make('Última Modificación', 'updated_at_formatted', 'updated_at')->sortable(),
             Column::action('Acciones')
         ];
     }
