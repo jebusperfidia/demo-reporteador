@@ -17,7 +17,7 @@ class CustomerFactory extends Factory
      */ public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            'name' => fake()->boolean(70) ? fake()->company() : fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->phoneNumber(),
         ];

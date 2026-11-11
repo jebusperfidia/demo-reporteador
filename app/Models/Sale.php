@@ -13,6 +13,10 @@ class Sale extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'due_date' => 'date',
+    ];
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

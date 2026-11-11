@@ -20,6 +20,7 @@
         "livewire/livewire": "^4.1",
         "maatwebsite/excel": "^4.0",
         "masmerise/livewire-toaster": "^2.10",
+        "openspout/openspout": "^4.24.5",
         "power-components/livewire-powergrid": "^6.11"
     },
     "require-dev": {

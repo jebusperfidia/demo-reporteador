@@ -11,6 +11,8 @@ use PowerComponents\LivewirePowerGrid\Column;
 use PowerComponents\LivewirePowerGrid\Facades\PowerGrid;
 use PowerComponents\LivewirePowerGrid\PowerGridFields;
 use PowerComponents\LivewirePowerGrid\PowerGridComponent;
+use PowerComponents\LivewirePowerGrid\Components\SetUp\Exportable;
+use PowerComponents\LivewirePowerGrid\Traits\WithExport;
 
 final class PaymentTable extends PowerGridComponent
 {
@@ -18,6 +20,8 @@ final class PaymentTable extends PowerGridComponent
 
     public ?string $startDate = null;
     public ?string $endDate = null;
+
+    use WithExport;
 
     #[On('applyDateFilter')]
     public function filterDates($start, $end): void
@@ -43,23 +47,29 @@ final class PaymentTable extends PowerGridComponent
             PowerGrid::header()
                 ->showSearchInput(),
 
+            PowerGrid::exportable(fileName: 'historial-abonos')
+                ->type(Exportable::TYPE_XLS, Exportable::TYPE_CSV)
+                ->stripTags(true),
+
             PowerGrid::footer()
-                ->showPerPage(10, [10, 25, 50, 100])
-                ->showRecordCount()
-            // ->Pagination('vendor.livewire.tailwind'),
-            // Al quitar la línea del 'simple-tailwind', forzamos a que use tu archivo publicado
+                ->showPerPage(10, [10, 25, 50, 100, 0])
+                ->showRecordCount(),
         ];
     }
 
     public function datasource(): Builder
     {
-        $query = Payment::query();
+        $query = Payment::query()
+            ->join('sales', 'sales.id', '=', 'payments.sale_id')
+            ->join('customers', 'customers.id', '=', 'sales.customer_id')
+            ->select('payments.*')
+            ->addSelect('customers.name as customer_name');
 
         if (!empty($this->startDate) && !empty($this->endDate)) {
             $start = Carbon::parse($this->startDate)->startOfDay();
             $end = Carbon::parse($this->endDate)->endOfDay();
 
-            $query->whereBetween('created_at', [$start, $end]);
+            $query->whereBetween('payments.created_at', [$start, $end]);
         }
 
         return $query;
@@ -70,30 +80,54 @@ final class PaymentTable extends PowerGridComponent
         return PowerGrid::fields()
             ->add('id')
             ->add('sale_id')
-            ->add('amount', fn($model) => '$' . number_format((float)$model->amount, 2))
+            ->add('customer_name')
+            ->add('amount_formatted', fn($model) => '$' . number_format((float) $model->amount, 2))
             ->add('created_at_formatted', fn($model) => Carbon::parse($model->created_at)->format('d/m/Y H:i'))
-            ->add('updated_at_formatted', fn($model) => Carbon::parse($model->updated_at)->format('d/m/Y H:i'));
+            ->add('updated_at_formatted', fn($model) => Carbon::parse($model->updated_at)->format('d/m/Y H:i'))
+            ->add('pdf_action', function ($row) {
+                return view('livewire.partials.actions.pdf-btn', ['id' => $row->id])->render();
+            });
     }
 
     public function columns(): array
     {
         return [
-            Column::make('Folio', 'id')->sortable(),
-            Column::make('Folio Venta', 'sale_id')->searchable()->sortable(),
-            Column::make('Monto Abonado', 'amount', 'amount')->sortable()->searchable(),
-            Column::make('Fecha de Registro', 'created_at_formatted', 'created_at')->sortable(),
-            Column::action('Acciones')
+            Column::make('Folio', 'id')
+                ->sortable(),
+
+            Column::make('Folio Venta', 'sale_id')
+                ->searchable()
+                ->sortable(),
+
+            Column::make('Cliente', 'customer_name', 'customers.name')
+                ->searchable()
+                ->sortable(),
+
+            Column::make('Monto Abonado', 'amount_formatted', 'payments.amount')
+                ->sortable()
+                ->searchable()
+                ->visibleInExport(false),
+
+            Column::make('Monto Abonado', 'amount')
+                ->hidden()
+                ->visibleInExport(true),
+
+            Column::make('Fecha de Registro', 'created_at_formatted', 'payments.created_at')
+                ->sortable()
+                ->visibleInExport(false),
+
+            Column::make('Fecha de Registro', 'created_at')
+                ->hidden()
+                ->visibleInExport(true),
+
+            Column::make('Acciones', 'pdf_action')
+                ->bodyAttribute('text-center')
+                ->visibleInExport(false),
         ];
     }
 
-    public function actions($row): array
+    public function openPdf($id)
     {
-        return [
-            Button::add('pdf')
-                ->slot('<svg class="w-5 h-5 text-red-500 hover:text-red-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>')
-                ->id()
-                ->class('flex items-center justify-center p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors outline-none')
-                ->dispatch('open-pdf-modal', ['id' => $row->id])
-        ];
+        $this->dispatch('open-pdf-modal', id: $id);
     }
 }

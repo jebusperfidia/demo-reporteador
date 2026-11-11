@@ -54,27 +54,27 @@ final class SaleTable extends PowerGridComponent
     public function columns(): array
     {
         return [
-            Column::make('Id', 'id'),
-            Column::make('Customer id', 'customer_id'),
-            Column::make('Total amount', 'total_amount')
+            Column::make('Folio', 'id'),
+            Column::make('Cliente', 'customer_id'),
+            Column::make('Monto Total', 'total_amount')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Balance', 'balance')
+            Column::make('Saldo', 'balance')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Status', 'status')
+            Column::make('Estado', 'status')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Created at', 'created_at_formatted', 'created_at')
+            Column::make('Fecha de Registro', 'created_at_formatted', 'created_at')
                 ->sortable(),
 
-            Column::make('Updated at', 'updated_at_formatted', 'updated_at')
+            Column::make('Fecha de Actualización', 'updated_at_formatted', 'updated_at')
                 ->sortable(),
 
-            Column::action('Action')
+            Column::action('Acciones')
         ];
     }
 

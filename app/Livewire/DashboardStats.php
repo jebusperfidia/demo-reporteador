@@ -15,16 +15,17 @@ class DashboardStats extends Component
     public int $monthsToShow = 6;
 
     // Se ejecuta automáticamente cuando el usuario cambia el selector en la vista
-    public function updatedMonthsToShow()
+    public function updatedMonthsToShow(): void
     {
         $chartData = $this->getChartData();
 
-        // Enviamos los nuevos datos a Alpine.js sin recargar la página
         $this->dispatch(
             'update-chart',
             labels: $chartData['labels'],
             sales: $chartData['sales'],
-            payments: $chartData['payments']
+            payments: $chartData['payments'],
+            statusLabels: $chartData['statusLabels'],
+            statusCounts: $chartData['statusCounts']
         );
     }
 
@@ -35,35 +36,79 @@ class DashboardStats extends Component
         $paymentsData = [];
 
         for ($i = $this->monthsToShow - 1; $i >= 0; $i--) {
-            $month = Carbon::now()->subMonths($i);
+
+            $month = Carbon::now()->startOfMonth()->subMonths($i);
+
+            $monthStart = $month->copy()->startOfMonth();
+            $monthEnd = $month->copy()->endOfMonth();
+
             $chartLabels[] = ucfirst($month->translatedFormat('M Y'));
 
-            $salesData[] = Sale::whereMonth('created_at', $month->month)
-                ->whereYear('created_at', $month->year)
+            $salesData[] = Sale::query()
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->where('status', '!=', 'canceled')
                 ->sum('total_amount');
 
-            $paymentsData[] = Payment::whereMonth('created_at', $month->month)
-                ->whereYear('created_at', $month->year)
+            $paymentsData[] = Payment::query()
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->whereHas('sale', fn($query) => $query->where('status', '!=', 'canceled'))
                 ->sum('amount');
         }
+
+        $startDate = Carbon::now()
+            ->startOfMonth()
+            ->subMonths($this->monthsToShow - 1);
+
+        $statuses = Sale::query()
+            ->whereBetween('created_at', [$startDate, now()->endOfMonth()])
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
 
         return [
             'labels' => $chartLabels,
             'sales' => $salesData,
             'payments' => $paymentsData,
+
+            'statusLabels' => [
+                'Pagadas',
+                'Pendientes',
+                'Canceladas',
+            ],
+
+            'statusCounts' => [
+                (int) ($statuses['paid'] ?? 0),
+                (int) ($statuses['pending'] ?? 0),
+                (int) ($statuses['canceled'] ?? 0),
+            ],
         ];
     }
-
     public function render(): View
     {
-        // Calculamos la fecha de inicio basándonos en el filtro seleccionado
-        $startDate = Carbon::now()->subMonths($this->monthsToShow - 1)->startOfMonth();
+        $startDate = Carbon::now()
+            ->startOfMonth()
+            ->subMonths($this->monthsToShow - 1);
 
-        // Filtramos todas las métricas de las tarjetas según esa fecha
-        $totalCustomers = Customer::where('created_at', '>=', $startDate)->count();
-        $totalSales = Sale::where('created_at', '>=', $startDate)->sum('total_amount');
-        $totalPaid = Payment::where('created_at', '>=', $startDate)->sum('amount');
-        $pendingBalance = Sale::where('created_at', '>=', $startDate)->sum('balance');
+        $endDate = Carbon::now()->endOfMonth();
+
+        $totalCustomers = Customer::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+
+        $totalSales = Sale::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', '!=', 'canceled')
+            ->sum('total_amount');
+
+        $totalPaid = Payment::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereHas('sale', fn($query) => $query->where('status', '!=', 'canceled'))
+            ->sum('amount');
+
+        $pendingBalance = Sale::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'pending')
+            ->sum('balance');
 
         return view('livewire.dashboard-stats', [
             'totalCustomers' => $totalCustomers,

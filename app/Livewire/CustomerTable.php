@@ -53,26 +53,26 @@ final class CustomerTable extends PowerGridComponent
     public function columns(): array
     {
         return [
-            Column::make('Id', 'id'),
-            Column::make('Name', 'name')
+            Column::make('ID', 'id'),
+            Column::make('Nombre', 'name')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Email', 'email')
+            Column::make('Correo Electrónico', 'email')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Phone', 'phone')
+            Column::make('Teléfono', 'phone')
                 ->sortable()
                 ->searchable(),
 
-            Column::make('Created at', 'created_at_formatted', 'created_at')
+            Column::make('Fecha de Creación', 'created_at_formatted', 'created_at')
                 ->sortable(),
 
-            Column::make('Updated at', 'updated_at_formatted', 'updated_at')
+            Column::make('Fecha de Actualización', 'updated_at_formatted', 'updated_at')
                 ->sortable(),
 
-            Column::action('Action')
+            Column::action('Acciones')
         ];
     }
 
